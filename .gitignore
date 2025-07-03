@@ -1,0 +1,77 @@
+# ===================================================================
+# Fichier .gitignore pour le projet Gestion Commerciale (Monorepo)
+# ===================================================================
+
+# Cache et dépendances
+# ---------------------------------
+# Ne jamais versionner les dépendances. Elles sont installées via npm/yarn.
+node_modules/
+/server/node_modules/
+/client/node_modules/
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+
+
+# Fichiers de build et de production
+# ---------------------------------
+# Ces fichiers sont générés automatiquement et ne doivent pas être dans le repo.
+/client/build/
+/client/dist/
+/server/dist/
+.next/
+.out/
+
+
+# Fichiers de log
+# ---------------------------------
+# Les logs sont spécifiques à un environnement d'exécution et n'ont pas leur place ici.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# Variables d'environnement
+# ---------------------------------
+# EXTRÊMEMENT IMPORTANT : Ne jamais versionner les secrets (clés d'API, mots de passe BDD, etc.)
+# Seul le fichier d'exemple est autorisé.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+!.env.example
+
+
+# Fichiers spécifiques à l'OS ou à l'éditeur de code
+# ---------------------------------
+# Inutile de partager ces fichiers spécifiques à la machine d'un développeur.
+.DS_Store
+Thumbs.db
+.vscode/ # Optionnel, mais souvent spécifique à l'utilisateur
+.idea/  # Pour les IDE JetBrains (WebStorm, etc.)
+
+
+# Fichiers de test
+# ---------------------------------
+# Les rapports de couverture sont des artéfacts générés.
+/coverage
+.nyc_output
+
+
+# Fichiers temporaires et caches
+# ---------------------------------
+.vite/ # Cache du serveur de développement Vite
+*.tsbuildinfo
+
+
+# Fichiers spécifiques à l'application
+# ---------------------------------
+# Dossiers où les utilisateurs peuvent téléverser des fichiers.
+/server/uploads/
+
+# Fichiers exportés par l'application (PDF, Excel, etc.)
+/server/exports/

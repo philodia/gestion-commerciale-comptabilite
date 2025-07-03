@@ -1,0 +1,22 @@
+{
+  "name": "gestion-commerciale-comptabilite",
+  "version": "1.0.0",
+  "description": "Application web complète de gestion commerciale et comptable pour PME/TPE au Sénégal.",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "start": "npm start --workspace=server",
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "install-all": "npm install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
