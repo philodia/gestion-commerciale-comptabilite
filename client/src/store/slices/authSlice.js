@@ -1,138 +1,159 @@
 // client/src/store/slices/authSlice.js
 
-import { createSlice, createAsyncThunk, isAnyOf } from '@reduxjs/toolkit';
-import api from '../../services/api';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import authService from '../../services/auth'; // On importe notre service d'authentification
 
 // ===================================================================
-// ASYNC THUNKS
+// ASYNC THUNKS - GESTION DES OPÉRATIONS ASYNCHRONES
 // ===================================================================
 
 /**
- * NOUVEAU: Thunk pour charger les données de l'utilisateur si un token existe.
- * C'est la pièce maîtresse pour maintenir la session utilisateur active après un refresh.
+ * Thunk pour l'enregistrement d'un utilisateur.
+ * Gère l'appel API via le service et retourne les données en cas de succès,
+ * ou rejette avec une valeur d'erreur en cas d'échec.
  */
-export const loadUser = createAsyncThunk(
-  'auth/loadUser',
-  async (_, thunkAPI) => {
-    // Si aucun token n'est dans l'état, inutile d'essayer
-    if (!thunkAPI.getState().auth.token) {
-      return thunkAPI.rejectWithValue('Aucun token trouvé');
-    }
-    try {
-      const response = await api.get('/auth/me');
-      return response.data; // Le payload sera { status: 'success', data: { user: {...} } }
-    } catch (error) {
-      const message = (error.response?.data?.message) || error.message;
-      return thunkAPI.rejectWithValue(message);
-    }
-  }
-);
-
 export const register = createAsyncThunk(
-  'auth/register',
+  'auth/register', // Nom de l'action pour le Redux DevTools
   async (userData, thunkAPI) => {
     try {
-      const response = await api.post('/auth/register', userData);
-      localStorage.setItem('token', response.data.token);
-      return response.data;
+      // Appelle la méthode 'register' de notre service.
+      return await authService.register(userData);
     } catch (error) {
-      const message = (error.response?.data?.message) || error.message;
+      // Extrait un message d'erreur clair de la réponse de l'API.
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      // Rejette la promesse avec le message d'erreur.
       return thunkAPI.rejectWithValue(message);
     }
   }
 );
 
+/**
+ * Thunk pour la connexion d'un utilisateur.
+ */
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials, thunkAPI) => {
     try {
-      const response = await api.post('/auth/login', credentials);
-      localStorage.setItem('token', response.data.token);
-      return response.data;
+      return await authService.login(credentials);
     } catch (error) {
-      const message = (error.response?.data?.message) || error.message;
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
       return thunkAPI.rejectWithValue(message);
     }
   }
 );
+
+/**
+ * Thunk pour récupérer les informations de l'utilisateur si un token est présent.
+ */
+export const getMe = createAsyncThunk(
+  'auth/getMe',
+  async (_, thunkAPI) => {
+    try {
+      return await authService.getCurrentUser();
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 
 // ===================================================================
 // DÉFINITION DU SLICE
 // ===================================================================
 
+// Récupère le token depuis le localStorage pour l'état initial.
 const token = localStorage.getItem('token');
 
 const initialState = {
   user: null,
   token: token,
-  isAuthenticated: false, // Initialisé à false, `loadUser` confirmera l'état
-  isLoading: true, // Commence à true car on va tenter de charger l'utilisateur
+  isAuthenticated: !!token, // Vrai si un token existe
+  isLoading: false,
   error: null,
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
+  // Reducers pour les actions synchrones
   reducers: {
-    // AMÉLIORÉ: La déconnexion est une action synchrone, plus besoin d'un thunk.
-    logout: (state) => {
-      localStorage.removeItem('token');
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
+    // Action pour réinitialiser l'état (par ex. pour effacer les erreurs)
+    reset: (state) => {
       state.isLoading = false;
       state.error = null;
     },
-    resetError: (state) => {
-      state.error = null;
-    }
+    // Action de déconnexion
+    logout: (state) => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+    },
   },
+  // Reducers pour les actions asynchrones (gérées par les thunks)
   extraReducers: (builder) => {
     builder
-      // Cas pour le chargement initial de l'utilisateur
-      .addCase(loadUser.pending, (state) => {
+      // Cas pour l'action register
+      .addCase(register.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(loadUser.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isAuthenticated = true;
-        state.user = action.payload.data.user;
-        state.error = null;
-      })
-      .addCase(loadUser.rejected, (state, action) => {
-        // Si loadUser échoue, le token est invalide. On nettoie tout.
-        localStorage.removeItem('token');
-        state.isLoading = false;
-        state.isAuthenticated = false;
-        state.user = null;
-        state.token = null;
-        state.error = action.payload; // On peut garder l'erreur si besoin de l'afficher
-      })
-      
-      // AMÉLIORÉ: Utilisation de `addMatcher` pour éviter la répétition de code.
-      // Gère l'état 'pending' pour login ET register
-      .addMatcher(isAnyOf(register.pending, login.pending), (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      // Gère l'état 'fulfilled' pour login ET register
-      .addMatcher(isAnyOf(register.fulfilled, login.fulfilled), (state, action) => {
+      .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.data.user;
         state.token = action.payload.token;
+        state.error = null;
       })
-      // Gère l'état 'rejected' pour login ET register
-      .addMatcher(isAnyOf(register.rejected, login.rejected), (state, action) => {
-        localStorage.removeItem('token'); // Sécurité : on nettoie un éventuel token invalide
+      .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
-        state.isAuthenticated = false;
+        state.error = action.payload; // Le message d'erreur vient du rejectWithValue
         state.user = null;
         state.token = null;
+        state.isAuthenticated = false;
+      })
+      // Cas pour l'action login
+      .addCase(login.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.data.user;
+        state.token = action.payload.token;
+        state.error = null;
+      })
+      .addCase(login.rejected, (state, action) => {
+        state.isLoading = false;
         state.error = action.payload;
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+      })
+      // Cas pour l'action getMe
+      .addCase(getMe.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.user = action.payload.data.user;
+      })
+      .addCase(getMe.rejected, (state) => {
+        // Si getMe échoue, c'est que le token est invalide, on déconnecte.
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
       });
   },
 });
 
-export const { logout, resetError } = authSlice.actions;
+// Exporte les actions synchrones pour être utilisées dans les composants si besoin
+export const { reset, logout } = authSlice.actions;
+
+// Exporte le reducer du slice pour l'ajouter au store
 export default authSlice.reducer;

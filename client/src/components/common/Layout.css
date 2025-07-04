@@ -1,0 +1,29 @@
+/* client/src/components/common/Layout.css */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f0f2f5; /* Un gris très clair pour le fond du contenu */
+}
+
+.main-panel {
+  flex-grow: 1; /* Permet au panneau principal de prendre tout l'espace restant */
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden; /* Empêche le défilement horizontal */
+}
+
+.content-wrapper {
+  flex-grow: 1; /* Permet au contenu de prendre tout l'espace vertical disponible */
+  padding: 2rem; /* Espace autour du contenu de la page */
+  overflow-y: auto; /* Permet le défilement si le contenu est trop long */
+}
+
+/* Styles pour les écrans plus petits (exemple de media query) */
+@media (max-width: 768px) {
+  /* Sur mobile, on pourrait vouloir cacher la sidebar ou la transformer en menu burger */
+  /* Pour l'instant, on ajuste juste le padding du contenu */
+  .content-wrapper {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,18 @@
+/* client/src/components/common/Footer.css */
+
+.app-footer {
+  background-color: #ffffff; /* Fond blanc */
+  border-top: 1px solid #e2e8f0; /* Bordure supérieure subtile, comme le header */
+  padding: 1rem 2rem;
+  color: #64748b; /* Texte gris-bleu */
+  font-size: 0.875rem; /* Petite taille de police */
+  flex-shrink: 0; /* Empêche le footer de rétrécir */
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* Permet de passer à la ligne sur les petits écrans */
+  gap: 1rem;
+}

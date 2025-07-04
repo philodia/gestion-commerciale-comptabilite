@@ -1,36 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
-import { login, resetError } from '../../store/slices/authSlice';
+// client/src/pages/auth/Login.jsx
 
-// Spinner component
-const Spinner = () => (
-  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-);
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+// Nos hooks et composants UI personnalisés
+import { useAuth } from '../../hooks/useAuth';
+import Card from '../../components/ui/Card';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import Alert from '../../components/ui/Alert';
+import { FaEnvelope, FaLock } from 'react-icons/fa';
 
 const LoginPage = () => {
+  // State local pour les champs du formulaire
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
-
   const { email, password } = formData;
 
-  const dispatch = useDispatch();
+  // Hooks pour la navigation et l'authentification
   const navigate = useNavigate();
+  const { login, isAuthenticated, isLoading, error } = useAuth();
 
-  const { isAuthenticated, isLoading, error } = useSelector((state) => state.auth);
-
+  // Redirection si l'utilisateur est déjà connecté
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/'); // Redirige vers le tableau de bord
     }
+  }, [isAuthenticated, navigate]);
 
-    return () => {
-      dispatch(resetError());
-    };
-  }, [isAuthenticated, navigate, dispatch]);
-
+  // Gère les changements dans les champs du formulaire
   const handleChange = (e) => {
     setFormData((prevState) => ({
       ...prevState,
@@ -38,71 +38,88 @@ const LoginPage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  // Gère la soumission du formulaire
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(login({ email, password }));
+    if (!email || !password) return; // Validation simple
+
+    try {
+      // Le hook useAuth retourne une promesse que l'on peut attendre
+      await login({ email, password }).unwrap();
+      // Si le login réussit, la redirection se fera via le useEffect
+      // ou on pourrait la forcer ici : navigate('/');
+    } catch (rejectedValueOrSerializedError) {
+      // L'erreur est déjà dans le state `error` de Redux,
+      // donc pas besoin de la gérer ici, sauf pour des cas spécifiques.
+      console.error('Échec de la connexion:', rejectedValueOrSerializedError);
+    }
   };
 
   return (
-    <div className="d-flex align-items-center justify-content-center vh-100" style={{ backgroundColor: '#f8f9fa' }}>
-      <div className="card shadow-lg border-0" style={{ width: '450px' }}>
-        <div className="card-body p-5">
-          <div className="text-center mb-4">
-            <h1 className="h3 fw-bold text-primary">GestionPro</h1>
-            <p className="text-muted">Connectez-vous à votre espace</p>
-          </div>
+    <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+      <div style={{ width: '100%', maxWidth: '450px' }}>
+        <Card
+          title={
+            <div className="text-center">
+              <h2 className="h3">Bienvenue sur GestionPro</h2>
+              <p className="text-muted">Connectez-vous à votre compte</p>
+            </div>
+          }
+        >
           <form onSubmit={handleSubmit}>
-            {error && <div className="alert alert-danger py-2">{error}</div>}
+            {error && (
+              <Alert variant="danger" className="mb-3">
+                {error}
+              </Alert>
+            )}
 
-            <div className="form-floating mb-3">
-              <input
-                type="email"
-                className={`form-control ${error ? 'is-invalid' : ''}`}
-                id="email"
-                name="email"
-                placeholder="nom@example.com"
-                value={email}
-                onChange={handleChange}
-                required
-              />
-              <label htmlFor="email">Adresse Email</label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              label="Adresse Email"
+              placeholder="votre.email@example.com"
+              value={email}
+              onChange={handleChange}
+              icon={<FaEnvelope />}
+              required
+              disabled={isLoading}
+            />
+
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              label="Mot de passe"
+              placeholder="Votre mot de passe"
+              value={password}
+              onChange={handleChange}
+              icon={<FaLock />}
+              required
+              disabled={isLoading}
+            />
+
+            <div className="d-flex justify-content-end mb-3">
+              <Link to="/forgot-password">Mot de passe oublié ?</Link>
             </div>
 
-            <div className="form-floating mb-3">
-              <input
-                type="password"
-                className={`form-control ${error ? 'is-invalid' : ''}`}
-                id="password"
-                name="password"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={handleChange}
-                required
-              />
-              <label htmlFor="password">Mot de passe</label>
-            </div>
-
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <div className="form-check">
-                <input type="checkbox" className="form-check-input" id="rememberMe" />
-                <label className="form-check-label" htmlFor="rememberMe">Se souvenir de moi</label>
-              </div>
-              <Link to="/forgot-password" style={{ textDecoration: 'none' }}>Mot de passe oublié ?</Link>
-            </div>
-
-            <div className="d-grid">
-              <button type="submit" className="btn btn-primary btn-lg" disabled={isLoading}>
-                {isLoading && <Spinner />}
-                {isLoading ? 'Connexion en cours...' : 'Se connecter'}
-              </button>
-            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-100"
+              isLoading={isLoading}
+            >
+              Se connecter
+            </Button>
           </form>
+
           <div className="text-center mt-4">
             <p className="text-muted">
-              Vous n'avez pas de compte ? <Link to="/register" style={{ textDecoration: 'none' }}>Inscrivez-vous</Link>
+              Vous n'avez pas de compte ?{' '}
+              <Link to="/register">Inscrivez-vous</Link>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

@@ -1,43 +1,42 @@
 // client/src/components/common/Layout.jsx
+
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { logout } from '../../store/slices/authSlice';
-import '../../App.css'; // On réutilise le CSS principal
+import { Outlet } from 'react-router-dom';
 
-const MainLayout = () => {
-  const dispatch = useDispatch();
-  
-  const handleLogout = () => {
-    dispatch(logout());
-  };
+// Import de nos composants de layout
+import Sidebar from './Sidebar';
+import Header from './Header';
+import Footer from './Footer';
 
+// Import du fichier CSS pour le layout global
+import './Layout.css';
+
+/**
+ * Le composant Layout principal pour les pages protégées de l'application.
+ * Il assemble la Sidebar, le Header, et le Footer autour du contenu de la page
+ * qui est rendu via le composant <Outlet /> de React Router.
+ */
+const Layout = () => {
   return (
     <div className="app-layout">
-      <aside className="sidebar">
-        <h1 className="sidebar-brand">GestionPro</h1>
-        <nav className="sidebar-nav">
-          <Link to="/" className="nav-link">Tableau de Bord</Link>
-          <Link to="/ventes" className="nav-link">Ventes</Link>
-          <Link to="/clients" className="nav-link">Clients</Link>
-          <Link to="/produits" className="nav-link">Produits</Link>
-          <Link to="/comptabilite" className="nav-link">Comptabilité</Link>
-        </nav>
-        <button onClick={handleLogout} className="btn btn-danger mt-auto">
-          Déconnexion
-        </button>
-      </aside>
+      {/* Colonne de navigation principale sur la gauche */}
+      <Sidebar />
+
+      {/* Panneau principal qui contient le header, le contenu et le footer */}
       <div className="main-panel">
-        <header className="app-header">
-          <div>Barre de recherche...</div>
-          <div>Profil Utilisateur</div>
-        </header>
+        <Header />
+
+        {/* Le wrapper pour le contenu principal de la page */}
         <main className="content-wrapper">
-          <Outlet /> {/* Le contenu de la page enfant s'affiche ici */}
+          {/* Outlet est le placeholder où React Router injectera
+              le composant de la page actuelle (ex: Dashboard, ClientsList, etc.) */}
+          <Outlet />
         </main>
+
+        <Footer />
       </div>
     </div>
   );
 };
 
-export default MainLayout;
+export default Layout;
