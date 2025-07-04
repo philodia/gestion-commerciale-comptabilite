@@ -2,22 +2,51 @@
 
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const authConfig = require('../config/auth'); // NOUVEAU : Import de la configuration
 
-// --- FONCTIONS UTILITAIRES (déjà créées) ---
+// --- FONCTIONS UTILITAIRES (Mises à jour) ---
+
+/**
+ * Crée et signe un JSON Web Token en utilisant la configuration centralisée.
+ */
 const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+  // MODIFIÉ : Utilise les valeurs de authConfig
+  return jwt.sign({ id }, authConfig.jwt.secret, {
+    expiresIn: authConfig.jwt.expiresIn,
   });
 };
 
+/**
+ * Centralise la logique d'envoi du token et des données utilisateur en réponse.
+ */
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user._id);
+
+  // MODIFIÉ : Calcule la date d'expiration à partir de la configuration
+  const expiresInString = authConfig.jwt.expiresIn;
+  let expirationDate;
+  if (expiresInString.endsWith('d')) {
+    const days = parseInt(expiresInString.replace('d', ''));
+    expirationDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  } else if (expiresInString.endsWith('h')) {
+    const hours = parseInt(expiresInString.replace('h', ''));
+    expirationDate = new Date(Date.now() + hours * 60 * 60 * 1000);
+  } else {
+    // Fallback à 1 jour si le format est inconnu
+    expirationDate = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
+  }
+
   const cookieOptions = {
-    expires: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    expires: expirationDate,
+    // MODIFIÉ : Utilise les valeurs de authConfig
+    httpOnly: authConfig.cookie.httpOnly,
+    secure: authConfig.cookie.secure,
+    sameSite: authConfig.cookie.sameSite,
   };
+
   res.cookie('jwt', token, cookieOptions);
+
+  // Supprime le mot de passe de l'objet utilisateur avant de l'envoyer
   user.password = undefined;
 
   res.status(statusCode).json({
@@ -29,12 +58,12 @@ const createSendToken = (user, statusCode, res) => {
   });
 };
 
+
 // ===================================================================
-// FONCTIONS DU CONTRÔLEUR (Vérifiez bien cette section)
+// FONCTIONS DU CONTRÔLEUR (Code inchangé, mais il bénéficie des mises à jour ci-dessus)
 // ===================================================================
 
-// Assurez-vous que 'exports.' est présent devant chaque fonction
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
   try {
     const { nom, email, password, role } = req.body;
     if (!nom || !email || !password) {
@@ -50,7 +79,7 @@ exports.register = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -66,7 +95,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// On a aussi besoin du controller pour la route /me
 exports.getMe = async (req, res) => {
   // Le middleware 'protect' a déjà ajouté req.user
   res.status(200).json({
@@ -77,8 +105,9 @@ exports.getMe = async (req, res) => {
   });
 };
 
+
 // ===================================================================
-// VÉRIFIEZ SURTOUT QUE CES DEUX EXPORTS SONT PRÉSENTS
+// FONCTIONNALITÉS FUTURES
 // ===================================================================
 exports.forgotPassword = async (req, res) => {
   res.status(501).json({ status: 'error', message: 'Cette fonctionnalité n\'est pas encore implémentée.' });

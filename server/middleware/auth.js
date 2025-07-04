@@ -1,8 +1,9 @@
 // server/middleware/auth.js
 
 const jwt = require('jsonwebtoken');
-const { promisify } = require('util'); // Utilitaire Node.js pour transformer une fonction callback en promesse
+const { promisify } = require('util');
 const User = require('../models/User');
+const authConfig = require('../config/auth'); // NOUVEAU : Import de la configuration
 
 /**
  * Middleware pour protéger les routes.
@@ -13,17 +14,14 @@ exports.protect = async (req, res, next) => {
   try {
     let token;
 
-    // 1) Récupérer le token depuis l'en-tête 'Authorization'
+    // 1) Récupérer le token depuis l'en-tête 'Authorization' ou les cookies
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      // Le format est "Bearer <token>", on extrait juste le token
       token = req.headers.authorization.split(' ')[1];
     } else if (req.cookies.jwt) {
-      // Alternative : récupérer le token depuis le cookie (si utilisé)
       token = req.cookies.jwt;
     }
 
     if (!token) {
-      // Si aucun token n'est trouvé, l'utilisateur n'est pas autorisé
       return res.status(401).json({ 
         status: 'fail', 
         message: 'Accès non autorisé. Veuillez vous connecter.' 
@@ -31,11 +29,10 @@ exports.protect = async (req, res, next) => {
     }
 
     // 2) Vérifier la validité du token
-    // jwt.verify est asynchrone, on le "promisifie" pour utiliser async/await
-    const decodedPayload = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+    // MODIFIÉ : Utilise le secret depuis authConfig au lieu de process.env directement
+    const decodedPayload = await promisify(jwt.verify)(token, authConfig.jwt.secret);
 
     // 3) Vérifier si l'utilisateur associé au token existe toujours
-    // decodedPayload contient l'id de l'utilisateur que nous avons mis lors de la signature
     const currentUser = await User.findById(decodedPayload.id);
     if (!currentUser) {
       return res.status(401).json({ 
@@ -52,14 +49,11 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Le token est valide et l'utilisateur existe.
-    // On attache l'objet utilisateur (sans le mot de passe) à la requête
-    // pour qu'il soit accessible dans les prochains middlewares ou contrôleurs.
+    // Le token est valide, on attache l'utilisateur à la requête
     req.user = currentUser;
-    next(); // Passe au middleware ou au contrôleur suivant
+    next();
 
   } catch (error) {
-    // Gère les erreurs de jwt.verify (token invalide, expiré, etc.)
     return res.status(401).json({ 
       status: 'fail', 
       message: 'Token invalide ou expiré. Veuillez vous reconnecter.' 
@@ -69,23 +63,16 @@ exports.protect = async (req, res, next) => {
 
 /**
  * Middleware de restriction de rôle.
- * Doit être utilisé APRÈS le middleware 'protect'.
- * @param {...string} roles - Une liste de rôles autorisés (ex: 'Admin', 'Comptable').
+ * (Ce middleware n'a pas besoin de modification car il ne dépend pas de la configuration)
  */
 exports.authorize = (...roles) => {
-  // Ce middleware retourne une autre fonction middleware, c'est une "closure".
-  // Cela permet de passer des arguments (les rôles) au middleware.
   return (req, res, next) => {
-    // Le middleware 'protect' a déjà été exécuté, donc req.user doit exister.
     if (!req.user || !roles.includes(req.user.role)) {
-      // Si le rôle de l'utilisateur n'est pas dans la liste des rôles autorisés...
-      return res.status(403).json({ // 403 = Forbidden
+      return res.status(403).json({
         status: 'fail',
         message: 'Vous n\'avez pas les permissions nécessaires pour effectuer cette action.'
       });
     }
-
-    // L'utilisateur a le bon rôle, on peut continuer.
     next();
   };
 };
